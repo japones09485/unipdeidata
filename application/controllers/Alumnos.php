@@ -1,5 +1,5 @@
 <?php
-
+ob_start();
 defined('BASEPATH') or exit('No direct script access allowed');
 
 use Restserver\Libraries\REST_Controller;
@@ -29,6 +29,7 @@ class Alumnos extends REST_Controller
 	function guardar_post()
 	{
 		$this->load->model('Alumnos_model', 'alum');
+		$this->load->library('mail_library');
 		$data = json_decode($this->post('data'));
 		$id_usu = json_decode($this->post('id'));
 		$alumno = json_decode($this->post('profesor'));
@@ -76,6 +77,9 @@ class Alumnos extends REST_Controller
 				$resp['data'] = $this->alum->get_by(array("alum_id" => $id));;
 				$resp['ok'] = true;
 				$resp['mensaje'] = 'Alumno creado exitosamente';
+
+					//crear link contraseña para redireccionar al cambio de passw
+				$this->mail_library->email_registro($data->data->email,2);
 
 			} else {
 				$id = $id_usu;
@@ -264,53 +268,34 @@ class Alumnos extends REST_Controller
 		$this->load->model('Diplomados_model', 'dip');
 		$this->load->model('Alumnos_model', 'alum');
 		 //validar que el correo este registrado
-		$email = $this->post('alumno');
-		$valid_correo = $this->alum->get_by(array(
-			'alum_email' => $email['correo']
-		));
-
-	
+		 $data = json_decode($this->post('data'));
+		 $id_alumno = json_decode($this->post('id_alumno'));
 		
-
-		if(isset($valid_correo->alum_id)){
-
-			$valid_reg = $this->relp->count_by(array(
-				'fk_profesor' => $this->post('profesor'),
-				'fk_alumno' => $valid_correo->alum_id,
-				'fk_programa' => $this->post('programa'),
-				'fk_tipo_programa' =>  $this->post('tipo')
-			));
-
-			if($valid_reg == 0 ){
-				$this->relp->insert(array(
-					'fk_profesor' => $this->post('profesor'),
-					'fk_alumno' => $valid_correo->alum_id,
-					'fk_programa' => $this->post('programa'),
-					'fk_tipo_programa' =>  $this->post('tipo'),
-					'fecha_inscrip' => date('y-m-d'),
-					'estado' => 1
+		
+				$valid= $this->relp->count_by(array(
+					'fk_profesor' => $data->data->profesor,
+					'fk_alumno' => $id_alumno,
+					'fk_programa' => $data->data->programa,
 				));
-				$data['success'] = true;
-				$data['mensaje'] = 'Alumno inscrito exitosamente';
-			}else{
-				$data['success'] = false;
-				$data['mensaje'] = 'Alumno ya inscrito';
-				
-			}
-			
-			
-		}else{
-			$data['success'] = true;
-			$data['mensaje'] = 'El correo ingresado no se encuentra registrado';
-		}
-
+  
+				if($valid == 0){
+					$this->relp->insert(array(
+						'fk_profesor' => $data->data->profesor,
+						'fk_alumno' => $id_alumno,
+						'fk_programa' => $data->data->programa,
+						'fk_tipo_programa' =>  $data->data->tipo_programa,
+						'fecha_inscrip' => date('y-m-d'),
+						'estado' => 1
+					));
+					$response['success'] = true;
+					$response['mensaje'] = 'Alumno inscrito exitosamente';
+				}else{
+					$response['success'] = false;
+					$response['mensaje'] = 'Alumno ya inscrito en este programa y profesor.';
+				}
 		
-		$alumnos = $this->relp->alumnos_carrera($this->post('tipo'),$this->post('programa'),$this->post('profesor'));
+		$this->response($response);
 	
-		$data['alumnos'] = $alumnos;
-		$this->response($data);
-		
-		
 	}
 
 	function cant_programasalum_post(){
@@ -321,7 +306,8 @@ class Alumnos extends REST_Controller
 		$this->load->model('Diplomados_model', 'dip');
 
 		$relcar = $this->rela->get_many_by(array(
-			'fk_alumno' => $this->post('alumno')
+			'fk_alumno' => $this->post('alumno'),
+			'estado' => 1
 		));
 
 		$cantfinal = array();
@@ -362,10 +348,75 @@ class Alumnos extends REST_Controller
 		$this->load->model('Diplomados_model', 'dip');
 		$this->load->model('Alumnos_model', 'alum');
 	
-		$respons = $this->alum->programasprof($this->post('tipo'),$this->post('alumno'));
+		$respons = $this->alum->programasprofactivos($this->post('tipo'),$this->post('alumno'));
 	
 		$data['success'] = true;
 		$data['data'] = $respons;
+		$this->response($data);
+	}
+
+	function cambiarestado_rel_post(){
+		$this->load->model('Rel_alum_progra_model', 'relp');
+		$this->load->model('Alumnos_model', 'alum');
+
+		$id_rel = $this->post('id_rel');
+		$estado = $this->post('estado');
+		$id_alumno = $this->post('alumno');
+	
+		if($estado == 0){
+
+			$updateestado = 1;
+			
+
+		}else if($estado == 1){
+
+			$updateestado = 0;
+
+		}
+		$this->relp->update_by(array(
+			'id'=>$id_rel
+		),array(
+			'estado'=>$updateestado
+		));
+
+		//consultamos carreras
+		$carreras = $this->alum->programasprof(1,$id_alumno);
+		//consultamos cursos	
+		$cursos = $this->alum->programasprof(2,$id_alumno);
+		//consultamos diplomados
+		$diplomados= $this->alum->programasprof(2,$id_alumno);
+
+		$data['carreras'] = $carreras;
+		$data['cursos'] = $cursos;
+		$data['diplomados'] = $diplomados;
+		$data['success'] = true;
+	
+		$this->response($data);
+
+	}
+
+	function getprogramasAlumno_post(){
+		$this->load->model('Alumnos_model', 'alum');
+		$id_alumno = $this->post('id');
+		//consultamos carreras
+		$carreras = $this->alum->programasprof(1,$id_alumno);
+		//consultamos cursos	
+		$cursos = $this->alum->programasprof(2,$id_alumno);
+		//consultamos diplomados
+		$diplomados= $this->alum->programasprof(2,$id_alumno);
+
+		$data['carreras'] = $carreras;
+		$data['cursos'] = $cursos;
+		$data['diplomados'] = $diplomados;
+		
+		if(count($carreras)==0 and count($cursos)==0 and count($diplomados)==0){
+			$data['success'] = false;
+		}else{
+			$data['success'] = true;
+		}
+
+		
+		
 		$this->response($data);
 	}
 

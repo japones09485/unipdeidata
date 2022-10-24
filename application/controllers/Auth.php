@@ -1,5 +1,5 @@
 <?php
-
+ob_start();
 defined('BASEPATH') OR exit('No direct script access allowed');
 use Restserver\Libraries\REST_Controller;
 require(APPPATH.'libraries/Rest_Controller.php');
@@ -182,22 +182,19 @@ class Auth extends REST_Controller
         $this->response($data);
     }
 
-	 public function verifyToken_get()
+    public function verifyToken_get()
     {
         $creatorJWT = new CreatorJWT();
         $received_Token = $this->input->request_headers();
-		echo '<pre>';
-		print_r($received_Token);
-		exit;
 		
-        if (!isset($received_Token['X-API-KEY'])) {
+        if (!isset($received_Token['x-api-key'])) {
             http_response_code('401');
             $this->response(array('status' => false, "message" => 'NO ESTA'));
             exit;
         }
 
         try {
-            $rkAr = explode(' ', $received_Token['X-API-KEY']);
+            $rkAr = explode(' ', $received_Token['x-api-key']);
             $jwtData = $creatorJWT->DecodeToken($rkAr[1]);
             $this->response(array(
                 'status' => true,

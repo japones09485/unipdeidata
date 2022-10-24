@@ -1,5 +1,5 @@
 <?php
-
+ob_start();
 defined('BASEPATH') or exit('No direct script access allowed');
 
 use Restserver\Libraries\REST_Controller;
@@ -30,6 +30,7 @@ class Profesores extends REST_Controller
 	function guardar_post()
 	{
 		$this->load->model('Profesores_model', 'pro');
+		$this->load->library('mail_library');
 		$data = json_decode($this->post('data'));
 		$id_usu = json_decode($this->post('id'));
 		$profesor = json_decode($this->post('profesor'));
@@ -51,9 +52,8 @@ class Profesores extends REST_Controller
 				'pro_password'=>md5($data->data->identificacion)
 			));
 
-			//crear link contraseña para redireccionar al cambio de passw
-		//$this->email_registro($data->data->email,1);
-
+	//crear link contraseña para redireccionar al cambio de passw
+	$this->mail_library->email_registro($data->data->email,1);
 
 		} else {
 			$id = $id_usu;
@@ -197,42 +197,7 @@ class Profesores extends REST_Controller
 		$this->response($response);
 	}
 
-	//email pára valñidar el registro
 
-	function email_registro($email, $tipo)
-	{
-		$this->load->model('Profesores_model', 'pro');
-		$codigo = md5($email);
-
-		if ($tipo == 1) {
-			$cabecera = 'Bienvenido a UNIPDEI ANDINA para validar su cuenta en nuestra plataforma por favor dar click al siguiente en enlace';
-			//$body = 'https://cityfitnessworld.com/fitnes/inicio/verifycodigo/' . $codigo;
-			$body = 'http://localhost:4200/rest_passw/'.$codigo;
-		} 
-		$profesor = $this->pro->get_by(array('pro_email' => $email));
-
-		$config['protocol'] = 'sendmail';
-		$config['mailtype'] = 'html';
-		$config['charset']  = 'utf-8';
-		$config['newline']  = "\r\n";
-
-		$this->email->clear(TRUE);
-		$this->email->initialize($config);
-		$this->email->set_mailtype("html");
-		$this->email->from('pruebaslealdesarrollo@gmail.com', 'UNIPDEI ANDINA');
-		$this->email->to($email);
-		$this->email->subject($cabecera);
-		$this->email->message($body);
-		
-		if ($this->email->send()) {
-			echo 'ok';
-		} else {
-			show_error($this->email->print_debugger()); 
-		}
-
-		exit;
-
-	}
 
 	function profesoresPrograma_post(){
 		$this->load->model('Rel_prof_progra_model', 'relp');

@@ -1,5 +1,5 @@
 <?php
-
+ob_start();
 defined('BASEPATH') or exit('No direct script access allowed');
 
 use Restserver\Libraries\REST_Controller;
@@ -14,6 +14,99 @@ class Carreras extends REST_Controller
 	{
 		parent::__construct();
 		header('Access-Control-Allow-Origin: *');
+	}
+
+	function getFront_get(){
+		$this->load->model('Carreras_model', 'car');
+		$this->load->model('Cursos_model', 'cur');
+		$this->load->model('Diplomados_model', 'dip');
+
+
+		$carreras = $this->car->get_many_by(array(
+			'estado'=>1
+		));
+
+		$cursos = $this->cur->get_many_by(array(
+			'estado'=>1
+		));
+
+		$diplomados = $this->dip->get_many_by(array(
+			'estado'=>1
+		));
+
+		$programas = array();
+
+		foreach ($carreras as $car){
+			$programas[] = $car;
+		}
+
+		foreach ($cursos as $cur){
+			$programas[] = $cur;
+		}
+
+		foreach ($diplomados as $dip){
+			$programas[] = $dip;
+		}
+		
+		if(count($programas)< 6){
+			$cant = count($programas);
+		}else{
+			$cant = 9;
+		}
+
+		$claves_aleatorias = array_rand($programas, $cant);
+		
+		foreach($claves_aleatorias as $indice){
+			$info[] = $programas[$indice];
+		}
+
+		$data['data'] = $info;
+		
+		$this->response($data);
+
+	}
+
+
+	function getallProgramas_get(){
+		$this->load->model('Carreras_model', 'car');
+		$this->load->model('Cursos_model', 'cur');
+		$this->load->model('Diplomados_model', 'dip');
+
+
+		$carreras = $this->car->get_many_by(array(
+			'estado'=>1
+		));
+
+		$cursos = $this->cur->get_many_by(array(
+			'estado'=>1
+		));
+
+		$diplomados = $this->dip->get_many_by(array(
+			'estado'=>1
+		));
+
+		$programas = array();
+
+		foreach ($carreras as $car){
+			$car->tipo_programa = 1;
+			$programas[] = $car;
+		}
+
+		foreach ($cursos as $cur){
+			$cur->tipo_programa = 2;
+			$programas[] = $cur;
+		}
+
+		foreach ($diplomados as $dip){
+			$dip->tipo_programa = 3;
+			$programas[] = $dip;
+		}
+
+		
+		$data['data'] = $programas;
+		
+		$this->response($data);
+
 	}
 
 	function getall_get()

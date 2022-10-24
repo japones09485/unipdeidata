@@ -1,5 +1,5 @@
 <?php
-
+ob_start();
 defined('BASEPATH') OR exit('No direct script access allowed');
 use Restserver\Libraries\REST_Controller;
 require(APPPATH.'libraries/Rest_Controller.php');
